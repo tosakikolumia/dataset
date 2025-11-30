@@ -26,9 +26,9 @@
       <div v-if="hospitals.length > 0" class="hospital-list">
         <div 
           v-for="hospital in hospitals" 
-          :key="hospital.id" 
+          :key="hospital.hospital_id"
           class="hospital-card"
-          @click="goToHospitalDetail(hospital.id)"
+          @click="goToHospitalDetail(hospital.hospital_id)"
         >
           <h3>{{ hospital.name }}</h3>
           <p>{{ hospital.address }}</p>
@@ -41,8 +41,8 @@
 </template>
 
 <script>
-import { useHospitalStore } from '@/stores/hospital';
-import { useRouter } from 'vue-router';
+import {useHospitalStore} from '@/stores/hospital';
+import {useRouter} from 'vue-router';
 
 export default {
   name: 'HomeView',
@@ -55,18 +55,19 @@ export default {
   },
   computed: {
     hospitals() {
-      return this.hospitalStore.hospitals.slice(0, 5); // Show only first 5 as recommendations
+      return this.hospitalStore.hospitals.slice(0, 5);
     }
   },
   async created() {
-    // Load some hospitals for recommendations
     await this.hospitalStore.fetchHospitals();
   },
   methods: {
     async searchHospitals() {
-      await this.hospitalStore.fetchHospitals({ name: this.searchKeyword });
+      await this.hospitalStore.fetchHospitals({name: this.searchKeyword});
     },
+    // 这里接收到的参数名无所谓，只要调用时传对了就行
     goToHospitalDetail(id) {
+      console.log('跳转ID:', id); // 建议加个日志，确保 id 不是 undefined
       this.router.push(`/hospital/${id}`);
     }
   }
@@ -74,6 +75,7 @@ export default {
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .home {
   max-width: 1200px;
   margin: 0 auto;
@@ -137,7 +139,7 @@ export default {
 }
 
 .hospital-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .no-hospitals {

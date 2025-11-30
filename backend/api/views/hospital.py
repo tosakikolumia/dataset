@@ -18,7 +18,12 @@ from api.serializers import (
 
 # 🏥 2. 医院等级 (改为 ModelViewSet 以支持 POST)
 class HospitalLevelViewSet(viewsets.ModelViewSet):
-    queryset = HospitalLevel.objects.all()
+
+    """
+    医院等级视图集
+    继承自ModelViewSet，提供完整的CRUD操作
+    """
+    queryset = HospitalLevel.objects.all()  # 获取所有医院等级数据
     serializer_class = HospitalLevelSerializer
     # 只有市政能增删改，其他人(包括居民)只能看
     permission_classes = [IsCityAdmin | ReadOnly]
@@ -35,7 +40,7 @@ class HospitalViewSet(viewsets.ModelViewSet):
             return [IsCityAdmin()]
         # PATCH/PUT(修改): 市政 或 本院管理员
         elif self.action in ['update', 'partial_update']:
-            return [IsCityAdmin() | IsHospitalAdmin()]
+            return [(IsCityAdmin | IsHospitalAdmin)()]
         # DELETE: 只有市政
         elif self.action == 'destroy':
             return [IsCityAdmin()]
