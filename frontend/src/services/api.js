@@ -107,6 +107,13 @@ const scoreAPI = {
   getScores: (params) => api.get('/scores/', { params }),
   createScore: (data) => api.post('/scores/', data),
 };
+// Authentication API endpoints
+const authAPI = {
+  // 对应后端的 POST /api/token/
+  login: (credentials) => api.post('/token/', credentials),
+  // 对应后端的 POST /api/token/refresh/
+  refreshToken: (refresh) => api.post('/token/refresh/', { refresh }),
+};
 
 export default {
   public: publicAPI,
@@ -116,4 +123,5 @@ export default {
   event: eventAPI,
   hospitalLevel: hospitalLevelAPI,
   score: scoreAPI,
+  auth: authAPI
 };
