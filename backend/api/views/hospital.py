@@ -6,11 +6,11 @@ from rest_framework import permissions
 from rest_framework.permissions import IsAuthenticated
 # 引入我们定义好的模型和序列化器
 from api.models import (
-    Hospital, HospitalLevel, HospitalDepartment,
+    Hospital, HospitalLevel, HospitalDepartment,District ,
     HospitalServiceScore, EmergencyEvent, HospitalEvent
 )
 from api.serializers import (
-    HospitalSerializer, HospitalLevelSerializer,
+    HospitalSerializer, HospitalLevelSerializer,DistrictSerializer ,
     HospitalDepartmentSerializer, HospitalServiceScoreSerializer,
     EmergencyEventSerializer
 )
@@ -119,3 +119,9 @@ class HospitalServiceScoreViewSet(viewsets.ModelViewSet):
             serializer.save(hospital=user.profile.hospital)
         else:
             serializer.save()
+
+
+class DistrictViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = District.objects.all()
+    serializer_class = DistrictSerializer
+    permission_classes = [permissions.AllowAny] # 允许前端随意获取列表

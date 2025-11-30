@@ -10,6 +10,7 @@ class PublicViewSet(viewsets.ViewSet):
     """
     专门给公众用的只读/搜索接口，不需要 ModelViewSet
     """
+    authentication_classes = []  # 不需要认证
     permission_classes = [AllowAny] # 允许任何人访问
 
     # POST /api/public/search_hospital/

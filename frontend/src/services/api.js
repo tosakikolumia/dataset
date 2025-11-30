@@ -115,6 +115,10 @@ const authAPI = {
   refreshToken: (refresh) => api.post('/token/refresh/', { refresh }),
 };
 
+const districtAPI = {
+  getAllDistricts: () => api.get('/districts/'),
+};
+
 export default {
   public: publicAPI,
   hospital: hospitalAPI,
@@ -123,5 +127,6 @@ export default {
   event: eventAPI,
   hospitalLevel: hospitalLevelAPI,
   score: scoreAPI,
+  district: districtAPI,
   auth: authAPI
 };

@@ -55,6 +55,7 @@ class Hospital(models.Model):
     established_year = models.IntegerField(null=True, blank=True)
     bed_total = models.IntegerField(null=True, blank=True)
     outpatient_capacity = models.IntegerField(null=True, blank=True)
+    phone = models.CharField(max_length=50, null=True, blank=True)
 
     class Meta:
         db_table = 'Hospital'
