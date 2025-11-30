@@ -45,7 +45,7 @@ class HospitalLevel(models.Model):
 
 # 3. Hospital（医院）
 class Hospital(models.Model):
-    hospital_id = models.IntegerField(primary_key=True)
+    hospital_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200)
     address = models.CharField(max_length=300, null=True, blank=True)
     district = models.ForeignKey(District, on_delete=models.CASCADE, db_column='district_id')

@@ -166,33 +166,6 @@ export default {
       };
       this.showAddHospitalModal = true;
     },
-    async saveHospital() {
-      try {
-        if (this.editingHospital) {
-          // 👇 修改点 8: 使用 hospital_id
-          await api.hospital.updateHospital(this.currentHospital.hospital_id, this.currentHospital);
-        } else {
-          await api.hospital.createHospital(this.currentHospital);
-        }
-
-        await this.loadHospitals();
-        this.cancelEdit();
-      } catch (error) {
-        console.error('Error saving hospital:', error);
-        alert("保存失败，请检查数据格式或权限");
-      }
-    },
-    async deleteHospital(id) {
-      if (confirm('确定要删除这个医院吗？删除后将无法恢复！')) {
-        try {
-          await api.hospital.deleteHospital(id);
-          await this.loadHospitals();
-        } catch (error) {
-          console.error('Error deleting hospital:', error);
-          alert("删除失败");
-        }
-      }
-    },
     cancelEdit() {
       this.showAddHospitalModal = false;
       this.editingHospital = false;
@@ -210,6 +183,40 @@ export default {
         bed_total: null,
         outpatient_capacity: null
       };
+    },
+    async saveHospital() {
+      try {
+        // 构造符合后端 Serializer 期望的数据对象
+        // 后端期望外键字段名为 'district' 和 'level'，而不是 'district_id' 和 'level_id'
+        const payload = {
+          name: this.currentHospital.name,
+          address: this.currentHospital.address,
+          phone: this.currentHospital.phone,
+          established_year: this.currentHospital.established_year,
+          bed_total: this.currentHospital.bed_total,
+          outpatient_capacity: this.currentHospital.outpatient_capacity,
+          // 关键修改：字段重命名
+          district: this.currentHospital.district_id,
+          level: this.currentHospital.level_id
+        };
+
+        if (this.editingHospital) {
+          // 更新时需要带上 ID，但在 URL 中传递即可，body 中可以包含也可以不包含（视 Serializer 设置）
+          // updateHospital(id, data)
+          await api.hospital.updateHospital(this.currentHospital.hospital_id, payload);
+        } else {
+          // 创建时不需要传 hospital_id，由后端自动生成 (前提是你修改了 Model 为 AutoField)
+          await api.hospital.createHospital(payload);
+        }
+
+        await this.loadHospitals();
+        this.cancelEdit();
+      } catch (error) {
+        console.error('Error saving hospital:', error.response?.data || error); // 打印详细后端错误
+        // 提示具体错误信息
+        const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : "保存失败，请检查数据格式或权限";
+        alert(errorMsg);
+      }
     },
     formatDate(year) {
       if (!year) return '未设置';

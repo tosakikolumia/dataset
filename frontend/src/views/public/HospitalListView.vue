@@ -45,9 +45,9 @@
     <div class="hospital-results">
       <div 
         v-for="hospital in hospitals" 
-        :key="hospital.id" 
+        :key="hospital.hospital_id"
         class="hospital-card"
-        @click="goToHospitalDetail(hospital.id)"
+        @click="goToHospitalDetail(hospital.hospital_id)"
       >
         <h3>{{ hospital.name }}</h3>
         <p class="address">{{ hospital.address }}</p>
