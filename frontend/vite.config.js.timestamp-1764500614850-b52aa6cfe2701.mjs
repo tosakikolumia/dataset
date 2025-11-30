@@ -1,0 +1,27 @@
+// vite.config.js
+import { fileURLToPath, URL } from "node:url";
+import { defineConfig } from "file:///F:/Dataset/frontend/node_modules/vite/dist/node/index.js";
+import vue from "file:///F:/Dataset/frontend/node_modules/@vitejs/plugin-vue/dist/index.mjs";
+var __vite_injected_original_import_meta_url = "file:///F:/Dataset/frontend/vite.config.js";
+var vite_config_default = defineConfig({
+  plugins: [
+    vue()
+  ],
+  resolve: {
+    alias: {
+      // 关键配置：将 '@' 映射到 'src' 目录
+      // 这是为了支持你在 Navbar.vue 中使用的 '@/stores/auth' 写法
+      "@": fileURLToPath(new URL("./src", __vite_injected_original_import_meta_url))
+    }
+  },
+  server: {
+    port: 5173,
+    // 可选：指定开发服务器端口
+    open: true
+    // 可选：启动时自动在浏览器打开
+  }
+});
+export {
+  vite_config_default as default
+};
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsidml0ZS5jb25maWcuanMiXSwKICAic291cmNlc0NvbnRlbnQiOiBbImNvbnN0IF9fdml0ZV9pbmplY3RlZF9vcmlnaW5hbF9kaXJuYW1lID0gXCJGOlxcXFxEYXRhc2V0XFxcXGZyb250ZW5kXCI7Y29uc3QgX192aXRlX2luamVjdGVkX29yaWdpbmFsX2ZpbGVuYW1lID0gXCJGOlxcXFxEYXRhc2V0XFxcXGZyb250ZW5kXFxcXHZpdGUuY29uZmlnLmpzXCI7Y29uc3QgX192aXRlX2luamVjdGVkX29yaWdpbmFsX2ltcG9ydF9tZXRhX3VybCA9IFwiZmlsZTovLy9GOi9EYXRhc2V0L2Zyb250ZW5kL3ZpdGUuY29uZmlnLmpzXCI7aW1wb3J0IHsgZmlsZVVSTFRvUGF0aCwgVVJMIH0gZnJvbSAnbm9kZTp1cmwnXHJcbmltcG9ydCB7IGRlZmluZUNvbmZpZyB9IGZyb20gJ3ZpdGUnXHJcbmltcG9ydCB2dWUgZnJvbSAnQHZpdGVqcy9wbHVnaW4tdnVlJ1xyXG5cclxuLy8gaHR0cHM6Ly92aXRlanMuZGV2L2NvbmZpZy9cclxuZXhwb3J0IGRlZmF1bHQgZGVmaW5lQ29uZmlnKHtcclxuICBwbHVnaW5zOiBbXHJcbiAgICB2dWUoKSxcclxuICBdLFxyXG4gIHJlc29sdmU6IHtcclxuICAgIGFsaWFzOiB7XHJcbiAgICAgIC8vIFx1NTE3M1x1OTUyRVx1OTE0RFx1N0Y2RVx1RkYxQVx1NUMwNiAnQCcgXHU2NjIwXHU1QzA0XHU1MjMwICdzcmMnIFx1NzZFRVx1NUY1NVxyXG4gICAgICAvLyBcdThGRDlcdTY2MkZcdTRFM0FcdTRFODZcdTY1MkZcdTYzMDFcdTRGNjBcdTU3MjggTmF2YmFyLnZ1ZSBcdTRFMkRcdTRGN0ZcdTc1MjhcdTc2ODQgJ0Avc3RvcmVzL2F1dGgnIFx1NTE5OVx1NkNENVxyXG4gICAgICAnQCc6IGZpbGVVUkxUb1BhdGgobmV3IFVSTCgnLi9zcmMnLCBpbXBvcnQubWV0YS51cmwpKVxyXG4gICAgfVxyXG4gIH0sXHJcbiAgc2VydmVyOiB7XHJcbiAgICBwb3J0OiA1MTczLCAvLyBcdTUzRUZcdTkwMDlcdUZGMUFcdTYzMDdcdTVCOUFcdTVGMDBcdTUzRDFcdTY3MERcdTUyQTFcdTU2NjhcdTdBRUZcdTUzRTNcclxuICAgIG9wZW46IHRydWUgIC8vIFx1NTNFRlx1OTAwOVx1RkYxQVx1NTQyRlx1NTJBOFx1NjVGNlx1ODFFQVx1NTJBOFx1NTcyOFx1NkQ0Rlx1ODlDOFx1NTY2OFx1NjI1M1x1NUYwMFxyXG4gIH1cclxufSkiXSwKICAibWFwcGluZ3MiOiAiO0FBQWlQLFNBQVMsZUFBZSxXQUFXO0FBQ3BSLFNBQVMsb0JBQW9CO0FBQzdCLE9BQU8sU0FBUztBQUZtSSxJQUFNLDJDQUEyQztBQUtwTSxJQUFPLHNCQUFRLGFBQWE7QUFBQSxFQUMxQixTQUFTO0FBQUEsSUFDUCxJQUFJO0FBQUEsRUFDTjtBQUFBLEVBQ0EsU0FBUztBQUFBLElBQ1AsT0FBTztBQUFBO0FBQUE7QUFBQSxNQUdMLEtBQUssY0FBYyxJQUFJLElBQUksU0FBUyx3Q0FBZSxDQUFDO0FBQUEsSUFDdEQ7QUFBQSxFQUNGO0FBQUEsRUFDQSxRQUFRO0FBQUEsSUFDTixNQUFNO0FBQUE7QUFBQSxJQUNOLE1BQU07QUFBQTtBQUFBLEVBQ1I7QUFDRixDQUFDOyIsCiAgIm5hbWVzIjogW10KfQo=
