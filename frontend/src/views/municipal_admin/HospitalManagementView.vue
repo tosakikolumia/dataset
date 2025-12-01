@@ -26,7 +26,8 @@
             <td>{{ hospital.address }}</td>
             <td>{{ hospital.phone || '未设置' }}</td>
             <td>{{ hospital.level?.level_name || hospital.level_name || '未设置' }}</td>
-            <td>{{ formatDate(hospital.established_year) }}</td> <td>
+            <td>{{ formatDate(hospital.established_year) }}</td>
+            <td>
               <button @click="editHospital(hospital)" class="edit-btn">编辑</button>
               <button @click="deleteHospital(hospital.hospital_id)" class="delete-btn">删除</button>
             </td>
@@ -43,6 +44,16 @@
             <label>医院名称:</label>
             <input v-model="currentHospital.name" type="text" required />
           </div>
+
+          <div class="form-group">
+            <label>医院简介:</label>
+            <textarea
+              v-model="currentHospital.introduction"
+              rows="4"
+              placeholder="请输入医院的详细介绍..."
+            ></textarea>
+          </div>
+
           <div class="form-group">
             <label>行政区:</label>
             <select v-model="currentHospital.district_id" required>
@@ -109,15 +120,16 @@ export default {
       editingHospital: false,
       districts: [],
       currentHospital: {
-        hospital_id: null, // 👇 修改点 4: 改名
+        hospital_id: null,
         name: '',
+        introduction: '', // ✅ 新增: 初始化简介字段
         district_id: null,
         address: '',
         phone: '',
-        established_year: null, // 👇 修改点 5: 对齐后端字段
+        established_year: null,
         level_id: null,
-        bed_total: null,        // 👇 修改点 6: 对齐后端字段
-        outpatient_capacity: null // 👇 修改点 7: 对齐后端字段
+        bed_total: null,
+        outpatient_capacity: null
       }
     };
   },
@@ -141,7 +153,6 @@ export default {
     async loadHospitals() {
       try {
         const response = await api.hospital.getAllHospitals();
-        // 处理后端返回格式，可能是 response.data.data 或者 response.data
         this.hospitals = response.data.data || response.data;
       } catch (error) {
         console.error('Error loading hospitals:', error);
@@ -157,14 +168,48 @@ export default {
     },
     editHospital(hospital) {
       this.editingHospital = true;
-      // 复制对象，确保字段名对齐
       this.currentHospital = {
         ...hospital,
-        // 如果后端返回的 level 是对象，提取 id
+        // ✅ 确保 introduction 字段被正确复制，如果后端没返回则默认为空
+        introduction: hospital.introduction || '',
         level_id: hospital.level ? hospital.level.level_id : hospital.level_id,
         district_id: hospital.district ? hospital.district.district_id : hospital.district_id
       };
       this.showAddHospitalModal = true;
+    },
+    async saveHospital() {
+      try {
+        // 🚨 构造 payload 以匹配后端 Serializer 期望的字段名 (district, level)
+        // 这一步非常重要，否则会报 400 Bad Request
+        const payload = {
+          ...this.currentHospital,
+          district: this.currentHospital.district_id, // 转换字段名
+          level: this.currentHospital.level_id        // 转换字段名
+        };
+
+        if (this.editingHospital) {
+          await api.hospital.updateHospital(this.currentHospital.hospital_id, payload);
+        } else {
+          await api.hospital.createHospital(payload);
+        }
+
+        await this.loadHospitals();
+        this.cancelEdit();
+      } catch (error) {
+        console.error('Error saving hospital:', error);
+        alert("保存失败: " + (error.response?.data ? JSON.stringify(error.response.data) : "请检查数据格式"));
+      }
+    },
+    async deleteHospital(id) {
+      if (confirm('确定要删除这个医院吗？删除后将无法恢复！')) {
+        try {
+          await api.hospital.deleteHospital(id);
+          await this.loadHospitals();
+        } catch (error) {
+          console.error('Error deleting hospital:', error);
+          alert("删除失败");
+        }
+      }
     },
     cancelEdit() {
       this.showAddHospitalModal = false;
@@ -175,6 +220,7 @@ export default {
       this.currentHospital = {
         hospital_id: null,
         name: '',
+        introduction: '', // ✅ 重置: 清空简介
         district_id: null,
         address: '',
         phone: '',
@@ -183,40 +229,6 @@ export default {
         bed_total: null,
         outpatient_capacity: null
       };
-    },
-    async saveHospital() {
-      try {
-        // 构造符合后端 Serializer 期望的数据对象
-        // 后端期望外键字段名为 'district' 和 'level'，而不是 'district_id' 和 'level_id'
-        const payload = {
-          name: this.currentHospital.name,
-          address: this.currentHospital.address,
-          phone: this.currentHospital.phone,
-          established_year: this.currentHospital.established_year,
-          bed_total: this.currentHospital.bed_total,
-          outpatient_capacity: this.currentHospital.outpatient_capacity,
-          // 关键修改：字段重命名
-          district: this.currentHospital.district_id,
-          level: this.currentHospital.level_id
-        };
-
-        if (this.editingHospital) {
-          // 更新时需要带上 ID，但在 URL 中传递即可，body 中可以包含也可以不包含（视 Serializer 设置）
-          // updateHospital(id, data)
-          await api.hospital.updateHospital(this.currentHospital.hospital_id, payload);
-        } else {
-          // 创建时不需要传 hospital_id，由后端自动生成 (前提是你修改了 Model 为 AutoField)
-          await api.hospital.createHospital(payload);
-        }
-
-        await this.loadHospitals();
-        this.cancelEdit();
-      } catch (error) {
-        console.error('Error saving hospital:', error.response?.data || error); // 打印详细后端错误
-        // 提示具体错误信息
-        const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : "保存失败，请检查数据格式或权限";
-        alert(errorMsg);
-      }
     },
     formatDate(year) {
       if (!year) return '未设置';
@@ -227,7 +239,7 @@ export default {
 </script>
 
 <style scoped>
-/* 样式保持不变 */
+/* 样式保持不变，略微增加 textarea 的样式 */
 .hospital-management {
   max-width: 1200px;
   margin: 0 auto;
@@ -294,6 +306,8 @@ th {
   border-radius: 8px;
   width: 600px;
   max-width: 90%;
+  max-height: 90vh; /* 防止模态框过高 */
+  overflow-y: auto; /* 内容过多时滚动 */
 }
 .form-group {
   margin-bottom: 15px;
@@ -311,6 +325,9 @@ th {
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
+}
+.form-group textarea {
+  resize: vertical; /* 允许垂直拉伸 */
 }
 .form-actions {
   text-align: right;

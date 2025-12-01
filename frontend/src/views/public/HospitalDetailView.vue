@@ -6,10 +6,10 @@
       <p class="phone">电话: {{ hospital.phone || '暂无' }}</p>
       <p class="rating">评分: {{ hospital.rating || '暂无评分' }}</p>
     </div>
-    
+
     <div class="tabs">
-      <button 
-        v-for="tab in tabs" 
+      <button
+        v-for="tab in tabs"
         :key="tab.key"
         :class="{ active: activeTab === tab.key }"
         @click="changeTab(tab.key)"
@@ -17,29 +17,30 @@
         {{ tab.title }}
       </button>
     </div>
-    
+
     <div class="tab-content">
-      <!-- 基础信息 -->
       <div v-if="activeTab === 'info'" class="tab-pane">
         <h3>医院简介</h3>
-        <p>{{ hospital.description || '暂无简介' }}</p>
-        
+        <p>{{ hospital.introduction || '暂无简介' }}</p>
+
         <h3>详细信息</h3>
         <div class="info-grid">
           <div><strong>医院等级:</strong> {{ hospital.level_name || '未设置' }}</div>
-          <div><strong>成立时间:</strong> {{ hospital.establishment_date || '未设置' }}</div>
-          <div><strong>床位数:</strong> {{ hospital.bed_count || '未设置' }}</div>
-          <div><strong>员工数:</strong> {{ hospital.staff_count || '未设置' }}</div>
+
+          <div><strong>成立时间:</strong> {{ formatYear(hospital.established_year) }}</div>
+
+          <div><strong>床位数:</strong> {{ hospital.bed_total || '未设置' }}</div>
+
+          <div><strong>员工数:</strong> {{ hospital.staff_count || 0 }} 人</div>
         </div>
       </div>
-      
-      <!-- 科室信息 -->
+
       <div v-if="activeTab === 'departments'" class="tab-pane">
         <h3>科室列表</h3>
         <div v-if="departments.length > 0" class="departments-list">
-          <div 
-            v-for="dept in departments" 
-            :key="dept.id" 
+          <div
+            v-for="dept in departments"
+            :key="dept.id"
             class="department-item"
           >
             <h4>{{ dept.department?.name || dept.department_name }}</h4>
@@ -48,14 +49,13 @@
         </div>
         <div v-else class="no-data">暂无科室信息</div>
       </div>
-      
-      <!-- 评分记录 -->
+
       <div v-if="activeTab === 'scores'" class="tab-pane">
         <h3>医院评分记录</h3>
         <div v-if="scores.length > 0" class="scores-list">
-          <div 
-            v-for="score in scores" 
-            :key="score.id" 
+          <div
+            v-for="score in scores"
+            :key="score.id"
             class="score-item"
           >
             <h4>评分: {{ score.score }}/100</h4>
@@ -66,14 +66,13 @@
         </div>
         <div v-else class="no-data">暂无评分记录</div>
       </div>
-      
-      <!-- 突发事件 -->
+
       <div v-if="activeTab === 'events'" class="tab-pane">
         <h3>参与的突发事件</h3>
         <div v-if="events.length > 0" class="events-list">
-          <div 
-            v-for="event in events" 
-            :key="event.id" 
+          <div
+            v-for="event in events"
+            :key="event.id"
             class="event-item"
           >
             <h4>{{ event.title }}</h4>
@@ -87,7 +86,7 @@
       </div>
     </div>
   </div>
-  
+
   <div v-else class="loading">加载中...</div>
 </template>
 
@@ -111,6 +110,7 @@ export default {
   },
   computed: {
     hospital() {
+      // 确保这里直接返回 store 中的对象，保持响应性
       return this.hospitalStore.currentHospital;
     },
     departments() {
@@ -126,16 +126,35 @@ export default {
   async created() {
     await this.loadHospitalData();
   },
+  updated() {
+    // 调试日志：当组件更新时，在控制台输出当前数据，方便排查
+    if (this.hospital) {
+      console.log('HospitalDetailView updated:', {
+        name: this.hospital.name,
+        intro: this.hospital.introduction,
+        year: this.hospital.established_year,
+        bed: this.hospital.bed_total
+      });
+    }
+  },
   methods: {
     async loadHospitalData() {
-      await this.hospitalStore.fetchHospitalById(this.id);
-      await this.hospitalStore.fetchHospitalDepartments(this.id);
-      await this.hospitalStore.fetchHospitalScores(this.id);
-      await this.hospitalStore.fetchHospitalEvents(this.id);
+      if (this.id) {
+        await this.hospitalStore.fetchHospitalById(this.id);
+        await this.hospitalStore.fetchHospitalDepartments(this.id);
+        await this.hospitalStore.fetchHospitalScores(this.id);
+        await this.hospitalStore.fetchHospitalEvents(this.id);
+      }
     },
     changeTab(tabKey) {
       this.activeTab = tabKey;
     },
+    // ✅ 新增: 专门处理纯年份数字 (如 1985)
+    formatYear(year) {
+      if (!year) return '未设置';
+      return year + '年';
+    },
+    // 处理完整日期字符串 (如 2023-10-01)
     formatDate(dateString) {
       if (!dateString) return '未设置';
       const date = new Date(dateString);

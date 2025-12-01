@@ -57,6 +57,7 @@ class Hospital(models.Model):
     outpatient_capacity = models.IntegerField(null=True, blank=True)
     phone = models.CharField(max_length=50, null=True, blank=True)
 
+    introduction = models.TextField(null=True, blank=True, verbose_name="医院简介")
     class Meta:
         db_table = 'Hospital'
 

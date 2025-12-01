@@ -31,12 +31,13 @@ class HospitalSerializer(serializers.ModelSerializer):
     # 如果想在返回医院信息时，直接看到等级的名字，而不是 level_id，可以用这个技巧：
     level_name = serializers.CharField(source='level.level_name', read_only=True)
     district_name = serializers.CharField(source='district.district_name', read_only=True)
-
+    staff_count = serializers.SerializerMethodField()
     class Meta:
         model = Hospital
         fields = '__all__'
-
-
+    def get_staff_count(self, obj):
+        # 统计关联到该医院的员工数量
+        return obj.hospitalstaff_set.count()
 class HospitalServiceScoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = HospitalServiceScore
