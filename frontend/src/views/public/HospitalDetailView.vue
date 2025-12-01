@@ -37,17 +37,7 @@
 
       <div v-if="activeTab === 'departments'" class="tab-pane">
         <h3>科室列表</h3>
-        <div v-if="departments.length > 0" class="departments-list">
-          <div
-            v-for="dept in departments"
-            :key="dept.id"
-            class="department-item"
-          >
-            <h4>{{ dept.department?.name || dept.department_name }}</h4>
-            <p>{{ dept.description || '暂无描述' }}</p>
-          </div>
-        </div>
-        <div v-else class="no-data">暂无科室信息</div>
+        <HospitalDepartmentList :hospitalId="hospital.hospital_id" />
       </div>
 
       <div v-if="activeTab === 'scores'" class="tab-pane">
@@ -92,9 +82,10 @@
 
 <script>
 import { useHospitalStore } from '@/stores/hospital';
-
+import HospitalDepartmentList from '@/components/HospitalDepartmentList.vue';
 export default {
   name: 'HospitalDetailView',
+  components: {HospitalDepartmentList},
   props: ['id'],
   data() {
     return {

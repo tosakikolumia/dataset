@@ -60,6 +60,10 @@ const hospitalAPI = {
   getHospitalDepartments: (id) => api.get(`/hospitals/${id}/departments/`),
   getHospitalScores: (id) => api.get(`/hospitals/${id}/scores/`),
   getHospitalEvents: (id) => api.get(`/hospitals/${id}/events/`),
+
+  getDepartmentDetail: (hospitalId, deptId) => api.get(`/hospitals/${hospitalId}/department_detail/`, {
+    params: { dept_id: deptId }
+  }),
 };
 
 // Department API endpoints

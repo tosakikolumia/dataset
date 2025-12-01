@@ -7,7 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 # 引入我们定义好的模型和序列化器
 from api.models import (
     Hospital, HospitalLevel, HospitalDepartment,District ,
-    HospitalServiceScore, EmergencyEvent, HospitalEvent
+    HospitalServiceScore, EmergencyEvent, HospitalEvent,
+    Department, DepartmentResource
 )
 from api.serializers import (
     HospitalSerializer, HospitalLevelSerializer,DistrictSerializer ,
@@ -90,6 +91,52 @@ class HospitalViewSet(viewsets.ModelViewSet):
             "code": 0,
             "message": "success",
             "data": serializer.data
+        })
+
+    # ✅ 2. 新增功能: 获取特定医院特定科室的详细信息 (三表合一)
+    # URL: GET /api/hospitals/{id}/department_detail/?dept_id={id}
+    @action(detail=True, methods=['get'])
+    def department_detail(self, request, pk=None):
+        hospital = self.get_object()
+        dept_id = request.query_params.get('dept_id')
+
+        if not dept_id:
+            return Response({"code": 400, "message": "dept_id is required"}, status=400)
+
+        # 1. 基础信息 & 位置信息 (查询 HospitalDepartment 中间表)
+        try:
+            relation = HospitalDepartment.objects.get(hospital=hospital, dept_id=dept_id)
+        except HospitalDepartment.DoesNotExist:
+            return Response({"code": 404, "message": "该医院未开设此科室"}, status=404)
+
+        # 2. 资源信息 (查询 DepartmentResource 表)
+        # 注意：资源表可能还没录入数据，所以要用 try-except 处理
+        try:
+            resource = DepartmentResource.objects.get(hospital=hospital, dept_id=dept_id)
+        except DepartmentResource.DoesNotExist:
+            resource = None
+
+        # 3. 组装数据 (手动构建字典，比写一个新的 Serializer 更灵活)
+        data = {
+            # 来自 Department 表 (通过 relation 关联获取)
+            "dept_id": relation.dept.dept_id,
+            "dept_name": relation.dept.dept_name,
+            "standard_code": relation.dept.standard_code,
+
+            # 来自 HospitalDepartment 表
+            "floor": relation.floor,
+            "room_count": relation.room_count,
+
+            # 来自 DepartmentResource 表 (如果没有则返回 0 或 未设置)
+            "bed_count": resource.bed_count if resource else 0,
+            "device_count": resource.device_count if resource else 0,
+            "daily_capacity": resource.daily_capacity if resource else 0,
+        }
+
+        return Response({
+            "code": 0,
+            "message": "success",
+            "data": data
         })
 
 # 🏥 3. 医院-科室关系 (M:N)
