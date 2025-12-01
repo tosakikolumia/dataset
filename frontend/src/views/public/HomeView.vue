@@ -15,6 +15,7 @@
       <h2>快捷入口</h2>
       <div class="links">
         <router-link to="/hospitals" class="link">医院查询</router-link>
+        <router-link to="/departments" class="link">按科室找医院</router-link>
         <a href="#" class="link">急诊服务</a>
         <a href="#" class="link">疫情信息</a>
         <a href="#" class="link">突发事件公告</a>

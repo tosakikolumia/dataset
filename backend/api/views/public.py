@@ -36,3 +36,37 @@ class PublicViewSet(viewsets.ViewSet):
             "message": "success",
             "data": serializer.data
         })
+
+    # POST /api/public/search_hospital/
+    @action(detail=False, methods=['post'])
+    def search_hospital(self, request):
+        # 获取前端传来的筛选条件
+        district_id = request.data.get('district')
+        level_id = request.data.get('level')
+        name_keyword = request.data.get('name')
+
+        # ✅ 新增：获取科室ID
+        dept_id = request.data.get('department')
+
+        # 构造查询
+        qs = Hospital.objects.all()
+        if district_id:
+            qs = qs.filter(district_id=district_id)
+        if level_id:
+            qs = qs.filter(level_id=level_id)
+        if name_keyword:
+            qs = qs.filter(name__contains=name_keyword)
+
+        # ✅ 新增：根据科室ID过滤 (通过 HospitalDepartment 中间表反向查询)
+        if dept_id:
+            qs = qs.filter(hospitaldepartment__dept_id=dept_id)
+
+        # 去重 (防止因为 join 导致同一医院出现多次)
+        qs = qs.distinct()
+
+        serializer = HospitalSerializer(qs, many=True)
+        return Response({
+            "code": 0,
+            "message": "success",
+            "data": serializer.data
+        })

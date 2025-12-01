@@ -104,7 +104,12 @@ const routes = [
     name: 'municipal-levels',
     component: () => import('../views/municipal_admin/LevelManagementView.vue'),
     meta: { requiresAuth: true, role: 'municipal_admin' }
-  }
+  },
+  {
+    path: '/departments',
+    name: 'department-index',
+    component: () => import('../views/public/DepartmentIndexView.vue')
+  },
 ]
 
 const router = createRouter({
