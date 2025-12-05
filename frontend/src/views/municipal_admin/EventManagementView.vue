@@ -1,88 +1,149 @@
 <template>
   <div class="event-management">
     <h1>突发事件管理</h1>
-    <p>市政管理员可新建突发事件，查看所有事件处理情况</p>
-    
+    <p>管理市政突发事件，指派主责医院及协同单位。</p>
+
     <div class="management-header">
-      <h3>突发事件列表</h3>
-      <button @click="showAddEventModal = true" class="add-btn">新建突发事件</button>
+      <div class="filters">
+        <label>筛选参与医院:</label>
+        <select v-model="filterHospitalId" @change="loadEvents">
+          <option value="">全部医院</option>
+          <option v-for="h in hospitals" :key="h.hospital_id" :value="h.hospital_id">
+            {{ h.name }}
+          </option>
+        </select>
+      </div>
+      <button @click="openAddModal" class="add-btn">➕ 新建突发事件</button>
     </div>
-    
+
     <div class="events-list">
-      <div 
-        v-for="event in events" 
-        :key="event.id" 
+      <div v-if="loading" class="loading">加载中...</div>
+
+      <div
+        v-else
+        v-for="event in events"
+        :key="event.event_id"
         class="event-card"
+        @click="showEventDetails(event)"
       >
-        <h3>{{ event.title }}</h3>
-        <div class="event-details">
-          <p><strong>类型:</strong> {{ event.event_type || '未分类' }}</p>
-          <p><strong>发生时间:</strong> {{ formatDate(event.occurrence_time) }}</p>
-          <p><strong>状态:</strong> 
-            <span :class="'status-' + (event.status || 'unknown')">
-              {{ event.status || '未知' }}
-            </span>
-          </p>
-          <p><strong>描述:</strong> {{ event.description || '暂无描述' }}</p>
+        <div class="card-header">
+          <h3>{{ event.event_type || '未命名事件' }}</h3>
+          <span :class="['severity-badge', getSeverityClass(event.severity)]">
+            {{ event.severity }}
+          </span>
         </div>
-        
-        <div class="event-hospital-stats">
-          <h4>参与医院统计</h4>
-          <p>共有 {{ getHospitalCountForEvent(event.id) }} 家医院参与</p>
+
+        <div class="event-details">
+          <p><strong>上报时间:</strong> {{ formatDate(event.report_time) }}</p>
+          <p><strong>参与医院:</strong> {{ event.participating_hospitals ? event.participating_hospitals.length : 0 }} 家</p>
+        </div>
+
+        <div class="card-actions">
+          <button class="view-btn">查看详情</button>
         </div>
       </div>
-      
-      <div v-if="events.length === 0" class="no-events">
-        暂无突发事件
+
+      <div v-if="!loading && events.length === 0" class="no-events">
+        暂无相关突发事件
       </div>
     </div>
-    
-    <!-- 新建事件模态框 -->
-    <div v-if="showAddEventModal" class="modal-overlay" @click="showAddEventModal = false">
-      <div class="modal-content" @click.stop>
-        <h3>新建突发事件</h3>
+
+    <div v-if="showAddEventModal" class="modal-overlay" @click.self="showAddEventModal = false">
+      <div class="modal-content large-modal">
+        <h3>🚨 新建突发事件</h3>
         <form @submit.prevent="createEvent">
-          <div class="form-group">
-            <label>事件标题:</label>
-            <input v-model="newEvent.title" type="text" required />
+          <div class="form-row">
+            <div class="form-group">
+              <label>事件类型/标题:</label>
+              <input v-model="newEvent.event_type" type="text" placeholder="例如：流感爆发、交通事故" required />
+            </div>
+            <div class="form-group">
+              <label>严重程度:</label>
+              <select v-model="newEvent.severity">
+                <option value="一般">一般 (IV级)</option>
+                <option value="较大">较大 (III级)</option>
+                <option value="重大">重大 (II级)</option>
+                <option value="特别重大">特别重大 (I级)</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>事件类型:</label>
-            <select v-model="newEvent.event_type">
-              <option value="epidemic">疫情</option>
-              <option value="accident">事故灾难</option>
-              <option value="public_health">公共卫生</option>
-              <option value="social_security">社会安全</option>
-              <option value="other">其他</option>
-            </select>
-          </div>
+
           <div class="form-group">
             <label>发生时间:</label>
-            <input v-model="newEvent.occurrence_time" type="datetime-local" />
+            <input v-model="newEvent.report_time" type="datetime-local" required />
           </div>
-          <div class="form-group">
-            <label>事件状态:</label>
-            <select v-model="newEvent.status">
-              <option value="active">进行中</option>
-              <option value="resolved">已解决</option>
-              <option value="closed">已关闭</option>
-            </select>
+
+          <div class="participants-section">
+            <div class="section-header">
+              <label>参与医院及角色:</label>
+              <button type="button" @click="addParticipantRow" class="small-btn">+ 添加医院</button>
+            </div>
+
+            <div v-for="(item, index) in newEvent.participants" :key="index" class="participant-row">
+              <select v-model="item.hospital_id" required>
+                <option value="" disabled>选择医院</option>
+                <option v-for="h in hospitals" :key="h.hospital_id" :value="h.hospital_id">
+                  {{ h.name }}
+                </option>
+              </select>
+
+              <select v-model="item.role" required>
+                <option value="primary">主责医院</option>
+                <option value="support">支援医院</option>
+                <option value="reporting">报告医院</option>
+                <option value="transfer">转诊医院</option>
+                <option value="screening">排查医院</option>
+              </select>
+
+              <button type="button" @click="removeParticipantRow(index)" class="del-btn" v-if="newEvent.participants.length > 1">×</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label>事件描述:</label>
-            <textarea 
-              v-model="newEvent.description" 
-              rows="4"
-              placeholder="请输入事件详细描述..."
-            ></textarea>
-          </div>
+
           <div class="form-actions">
-            <button type="submit" class="create-btn">创建事件</button>
-            <button type="button" @click="cancelAdd" class="cancel-btn">取消</button>
+            <button type="button" @click="showAddEventModal = false" class="cancel-btn">取消</button>
+            <button type="submit" class="create-btn">立即发布</button>
           </div>
         </form>
       </div>
     </div>
+
+    <div v-if="selectedEvent" class="modal-overlay" @click.self="selectedEvent = null">
+      <div class="modal-content">
+        <h3>{{ selectedEvent.event_type }} - 详细信息</h3>
+        <p class="meta-info">发生时间: {{ formatDate(selectedEvent.report_time) }}</p>
+        <p class="meta-info">严重程度: {{ selectedEvent.severity }}</p>
+
+        <h4>🏥 参与医院列表</h4>
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>医院名称</th>
+              <th>承担角色</th>
+              <th>响应时间</th>
+              <th>接诊人数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="ph in selectedEvent.participating_hospitals" :key="ph.id">
+              <td>{{ ph.hospital_name }}</td>
+              <td>
+                <span :class="['role-tag', ph.role]">{{ ph.role_display }}</span>
+              </td>
+              <td>{{ formatDate(ph.response_time) || '-' }}</td>
+              <td>{{ ph.affected_patient_count || 0 }}</td>
+            </tr>
+            <tr v-if="!selectedEvent.participating_hospitals?.length">
+              <td colspan="4" style="text-align:center; color:#999;">暂无医院参与记录</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="form-actions">
+          <button @click="selectedEvent = null" class="create-btn">关闭</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -93,71 +154,109 @@ export default {
   name: 'EventManagementView',
   data() {
     return {
+      loading: false,
       events: [],
-      hospitalEvents: [],
+      hospitals: [],
+      filterHospitalId: '',
       showAddEventModal: false,
+      selectedEvent: null,
+
+      // 新建表单数据
       newEvent: {
-        title: '',
-        event_type: 'other',
-        occurrence_time: '',
-        status: 'active',
-        description: ''
+        event_type: '',
+        severity: '一般',
+        report_time: '',
+        participants: [
+          { hospital_id: '', role: 'primary' }
+        ]
       }
     };
   },
   async created() {
-    await this.loadData();
+    // 页面加载时获取数据
+    await this.fetchHospitals();
+    await this.loadEvents();
   },
   methods: {
-    async loadData() {
-      await Promise.all([
-        this.loadEvents(),
-        this.loadHospitalEvents()
-      ]);
+    async fetchHospitals() {
+      try {
+        // ✅ 修正：使用 api.hospital.getAllHospitals()
+        const res = await api.hospital.getAllHospitals();
+        this.hospitals = res.data;
+      } catch (err) {
+        console.error("获取医院列表失败", err);
+      }
     },
     async loadEvents() {
+      this.loading = true;
       try {
-        const response = await api.event.getAllEvents();
-        this.events = response.data.data;
-      } catch (error) {
-        console.error('Error loading events:', error);
+        const params = {};
+        if (this.filterHospitalId) {
+          params.hospital_id = this.filterHospitalId;
+        }
+        // ✅ 修正：使用 api.event.getAllEvents(params)
+        // 注意：先确保按上面第1步修改了 api.js 支持传参
+        const res = await api.event.getAllEvents(params);
+        this.events = res.data;
+      } catch (err) {
+        console.error("加载事件失败", err);
+      } finally {
+        this.loading = false;
       }
     },
-    async loadHospitalEvents() {
-      try {
-        const response = await api.event.getHospitalEvents({});
-        this.hospitalEvents = response.data.data;
-      } catch (error) {
-        console.error('Error loading hospital events:', error);
-      }
+    openAddModal() {
+      this.newEvent = {
+        event_type: '',
+        severity: '一般',
+        report_time: new Date().toISOString().slice(0, 16),
+        participants: [{ hospital_id: '', role: 'primary' }]
+      };
+      this.showAddEventModal = true;
+    },
+    addParticipantRow() {
+      this.newEvent.participants.push({ hospital_id: '', role: 'support' });
+    },
+    removeParticipantRow(index) {
+      this.newEvent.participants.splice(index, 1);
     },
     async createEvent() {
+      if (!this.newEvent.event_type) return alert("请填写事件类型");
+
+      const validParticipants = this.newEvent.participants.filter(p => p.hospital_id);
+
+      const payload = {
+        event_type: this.newEvent.event_type,
+        severity: this.newEvent.severity,
+        report_time: this.newEvent.report_time,
+        participants: validParticipants
+      };
+
       try {
-        await api.event.createEvent(this.newEvent);
+        // ✅ 修正：使用 api.event.createEvent(payload)
+        await api.event.createEvent(payload);
+        this.showAddEventModal = false;
         await this.loadEvents();
-        this.cancelAdd();
-      } catch (error) {
-        console.error('Error creating event:', error);
-        // In a real app, show user-friendly error message
+        alert("事件创建成功");
+      } catch (err) {
+        console.error("创建失败", err);
+        alert("创建失败，请检查网络或输入");
       }
     },
-    getHospitalCountForEvent(eventId) {
-      return this.hospitalEvents.filter(he => he.event?.id === eventId).length;
+    showEventDetails(event) {
+      this.selectedEvent = event;
     },
-    cancelAdd() {
-      this.showAddEventModal = false;
-      this.newEvent = {
-        title: '',
-        event_type: 'other',
-        occurrence_time: '',
-        status: 'active',
-        description: ''
+    formatDate(str) {
+      if (!str) return '';
+      return new Date(str).toLocaleString('zh-CN', { hour12: false });
+    },
+    getSeverityClass(severity) {
+      const map = {
+        '一般': 'sev-low',
+        '较大': 'sev-mid',
+        '重大': 'sev-high',
+        '特别重大': 'sev-critical'
       };
-    },
-    formatDate(dateString) {
-      if (!dateString) return '未设置';
-      const date = new Date(dateString);
-      return date.toLocaleString('zh-CN');
+      return map[severity] || '';
     }
   }
 };
@@ -165,9 +264,9 @@ export default {
 
 <style scoped>
 .event-management {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 20px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
 }
 
 .management-header {
@@ -175,92 +274,103 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.add-btn, .create-btn, .cancel-btn {
-  padding: 8px 16px;
+.filters select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-left: 10px;
+}
+
+.add-btn {
+  background-color: #3498db;
+  color: white;
   border: none;
+  padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.add-btn, .create-btn {
-  background-color: #007bff;
-  color: white;
-}
-
-.cancel-btn {
-  background-color: #6c757d;
-  color: white;
-  margin-left: 10px;
+  font-weight: bold;
 }
 
 .events-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
 
 .event-card {
-  border: 1px solid #ddd;
+  background: white;
   border-radius: 8px;
   padding: 15px;
-  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: transform 0.2s;
+  border-left: 4px solid #3498db;
 }
 
-.event-card h3 {
-  margin-top: 0;
-  color: #007bff;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+.event-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: #2c3e50;
+}
+
+.severity-badge {
+  font-size: 0.8em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+  background: #95a5a6;
+}
+.sev-low { background: #27ae60; }
+.sev-mid { background: #f39c12; }
+.sev-high { background: #e67e22; }
+.sev-critical { background: #c0392b; }
 
 .event-details p {
-  margin: 8px 0;
-}
-
-.status-active {
-  color: #28a745;
-  font-weight: bold;
-}
-
-.status-resolved {
-  color: #17a2b8;
-  font-weight: bold;
-}
-
-.status-closed {
-  color: #6c757d;
-  font-weight: bold;
-}
-
-.event-hospital-stats {
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #eee;
-}
-
-.event-hospital-stats h4 {
-  margin: 0 0 10px 0;
-  color: #495057;
-}
-
-.no-events {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 40px;
+  margin: 5px 0;
   color: #666;
+  font-size: 0.9em;
 }
 
+.card-actions {
+  margin-top: 15px;
+  text-align: right;
+}
+
+.view-btn {
+  background: none;
+  border: 1px solid #3498db;
+  color: #3498db;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -269,34 +379,129 @@ export default {
 
 .modal-content {
   background: white;
-  padding: 20px;
+  padding: 25px;
   border-radius: 8px;
   width: 500px;
   max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.large-modal {
+  width: 700px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+.form-row .form-group {
+  flex: 1;
 }
 
 .form-group {
   margin-bottom: 15px;
 }
-
 .form-group label {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
 }
-
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-group input, .form-group select {
   width: 100%;
-  padding: 8px 12px;
+  padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
 }
 
+.participants-section {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.participant-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.participant-row select {
+  flex: 1;
+}
+
+.small-btn {
+  padding: 2px 8px;
+  font-size: 0.8em;
+  background: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.del-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  width: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+.detail-table th, .detail-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+.detail-table th {
+  background-color: #f8f9fa;
+}
+
+.role-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  background: #eee;
+}
+.role-tag.primary { background: #e74c3c; color: white; } /* 主责：红 */
+.role-tag.support { background: #3498db; color: white; } /* 支援：蓝 */
+.role-tag.reporting { background: #95a5a6; color: white; } /* 报告：灰 */
+.role-tag.transfer { background: #f1c40f; color: white; } /* 转诊：黄 */
+.role-tag.screening { background: #9b59b6; color: white; } /* 排查：紫 */
+
 .form-actions {
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
   margin-top: 20px;
+}
+.cancel-btn {
+  padding: 8px 16px;
+  background: #ccc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.create-btn {
+  padding: 8px 16px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 </style>

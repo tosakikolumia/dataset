@@ -1,78 +1,124 @@
 <template>
   <div class="staff-statistics">
-    <h1>全市人员统计</h1>
-    <p>医生人数、护士人数、各医院人员分布</p>
-    
+    <div class="header-section">
+      <h1>医护人员规模与结构管理</h1>
+      <p>全市医生、护士数量概览及职称结构分析</p>
+    </div>
+
     <div class="stats-overview">
-      <div class="stat-card">
+      <div class="stat-card doctor-card">
         <h3>医生总数</h3>
-        <p class="stat-value">{{ stats.totalDoctors }}</p>
+        <p class="stat-value">{{ stats.total_doctors }}</p>
+        <span class="stat-label">Doctors</span>
       </div>
-      
-      <div class="stat-card">
+
+      <div class="stat-card nurse-card">
         <h3>护士总数</h3>
-        <p class="stat-value">{{ stats.totalNurses }}</p>
+        <p class="stat-value">{{ stats.total_nurses }}</p>
+        <span class="stat-label">Nurses</span>
       </div>
-      
-      <div class="stat-card">
-        <h3>总员工数</h3>
-        <p class="stat-value">{{ stats.totalStaff }}</p>
+
+      <div class="stat-card other-card">
+        <h3>其他人员</h3>
+        <p class="stat-value">{{ stats.total_others }}</p>
+        <span class="stat-label">Others</span>
+      </div>
+
+      <div class="stat-card total-card">
+        <h3>全员总计</h3>
+        <p class="stat-value">{{ stats.total_staff }}</p>
+        <span class="stat-label">Total Staff</span>
       </div>
     </div>
-    
-    <div class="staff-distribution">
-      <h2>各医院人员分布</h2>
-      <div class="hospital-staff-list">
-        <div 
-          v-for="hospitalStaff in hospitalStaffDistribution" 
-          :key="hospitalStaff.hospitalId" 
-          class="hospital-staff-card"
-        >
-          <h3>{{ hospitalStaff.hospitalName }}</h3>
-          <div class="staff-breakdown">
-            <div class="staff-type">
-              <span class="type-label">医生:</span>
-              <span class="type-value">{{ hospitalStaff.doctorsCount }}</span>
+
+    <div class="content-grid">
+      <div class="panel title-structure">
+        <h2>职称结构分布</h2>
+        <div v-if="titleStructure.length > 0" class="structure-list">
+          <div v-for="(item, index) in titleStructure" :key="index" class="structure-item">
+            <div class="structure-info">
+              <span class="structure-name">{{ item.title }}</span>
+              <span class="structure-count">{{ item.count }}人</span>
             </div>
-            <div class="staff-type">
-              <span class="type-label">护士:</span>
-              <span class="type-value">{{ hospitalStaff.nursesCount }}</span>
+            <div class="progress-bg">
+              <div
+                class="progress-bar"
+                :style="{ width: getPercentage(item.count) + '%' }"
+                :class="getBarClass(item.title)"
+              ></div>
             </div>
-            <div class="staff-type">
-              <span class="type-label">其他:</span>
-              <span class="type-value">{{ hospitalStaff.otherCount }}</span>
+          </div>
+        </div>
+        <div v-else class="empty-state">暂无职称数据</div>
+      </div>
+
+      <div class="panel hospital-distribution">
+        <h2>各医院人员分布</h2>
+        <div class="hospital-list">
+          <div
+            v-for="hospital in hospitalDistribution"
+            :key="hospital.hospital__hospital_id"
+            class="hospital-item"
+          >
+            <div class="hospital-header">
+              <h3>{{ hospital.hospital__name }}</h3>
+              <span class="total-badge">总计: {{ hospital.total }}</span>
             </div>
-            <div class="staff-type total">
-              <span class="type-label">总计:</span>
-              <span class="type-value">{{ hospitalStaff.total }}</span>
+            <div class="hospital-stats">
+              <div class="sub-stat">
+                <span class="dot doctor-dot"></span> 医生: {{ hospital.doctors_count }}
+              </div>
+              <div class="sub-stat">
+                <span class="dot nurse-dot"></span> 护士: {{ hospital.nurses_count }}
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    
-    <div class="staff-list-section">
-      <h2>所有医护人员</h2>
-      <div class="staff-table">
+
+    <!-- 新增环形图部分 -->
+    <div class="panel chart-section">
+      <h2>全市医院人员占比分析</h2>
+      <div class="chart-container">
+        <div ref="hospitalPieChart" class="pie-chart"></div>
+        <div class="chart-legend">
+          <div class="legend-item" v-for="(hospital, index) in hospitalDistribution" :key="index">
+            <span class="legend-color" :style="{ backgroundColor: chartColors[index % chartColors.length] }"></span>
+            <span class="legend-name">{{ hospital.hospital__name }}</span>
+            <span class="legend-value">{{ hospital.total }}人 ({{ getHospitalPercentage(hospital.total) }}%)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel staff-list-section">
+      <div class="panel-header">
+        <h2>人员明细表</h2>
+        <button @click="loadData" class="refresh-btn">刷新数据</button>
+      </div>
+      <div class="table-container">
         <table>
           <thead>
             <tr>
               <th>姓名</th>
               <th>工号</th>
-              <th>职位</th>
               <th>职称</th>
-              <th>科室</th>
-              <th>所属医院</th>
+              <th>性别</th>
+              <th>入职日期</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="staff in allStaff" :key="staff.id">
+            <tr v-for="staff in allStaff" :key="staff.staff_id">
               <td>{{ staff.name }}</td>
               <td>{{ staff.staff_id }}</td>
-              <td>{{ staff.position || '未设置' }}</td>
-              <td>{{ staff.title || '未设置' }}</td>
-              <td>{{ staff.department_name || '未设置' }}</td>
-              <td>{{ getHospitalNameForStaff(staff.id) }}</td>
+              <td>
+                <span class="tag" :class="getBarClass(staff.title)">
+                  {{ staff.title || '未定级' }}
+                </span>
+              </td>
+              <td>{{ staff.gender || '-' }}</td>
+              <td>{{ staff.hire_date || '-' }}</td>
             </tr>
           </tbody>
         </table>
@@ -83,120 +129,150 @@
 
 <script>
 import api from '@/services/api';
+import * as echarts from 'echarts';
 
 export default {
   name: 'StaffStatisticsView',
   data() {
     return {
-      allStaff: [],
-      hospitalStaffs: [],
-      hospitals: [],
       stats: {
-        totalDoctors: 0,
-        totalNurses: 0,
-        totalStaff: 0
+        total_staff: 0,
+        total_doctors: 0,
+        total_nurses: 0,
+        total_others: 0
       },
-      hospitalStaffDistribution: []
+      titleStructure: [],
+      hospitalDistribution: [],
+      allStaff: [],
+      chartColors: [
+        '#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6',
+        '#1abc9c', '#34495e', '#16a085', '#27ae60', '#2980b9',
+        '#8e44ad', '#f1c40f', '#e67e22', '#95a5a6', '#d35400'
+      ],
+      pieChart: null
     };
   },
-  async created() {
-    await this.loadData();
+  created() {
+    this.loadData();
+  },
+  mounted() {
+    window.addEventListener('resize', this.handleResize);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+    if (this.pieChart) {
+      this.pieChart.dispose();
+    }
   },
   methods: {
     async loadData() {
-      await Promise.all([
-        this.loadAllStaff(),
-        this.loadHospitalStaffs(),
-        this.loadHospitals()
-      ]);
-      this.processStaffData();
-    },
-    async loadAllStaff() {
       try {
-        const response = await api.staff.getAllStaffs();
-        this.allStaff = response.data.data;
+        // 并行请求统计数据和明细数据
+        const [statsRes, listRes] = await Promise.all([
+          api.staff.getStatistics(),
+          api.staff.getAllStaffs()
+        ]);
+
+        // 处理统计数据
+        const data = statsRes.data;
+        this.stats = data.overview;
+        this.titleStructure = data.title_structure;
+        this.hospitalDistribution = data.hospital_distribution;
+
+        // 处理列表数据
+        this.allStaff = listRes.data.results || listRes.data;
+
+        // 等待DOM更新后初始化图表
+        this.$nextTick(() => {
+          this.initPieChart();
+        });
+
       } catch (error) {
-        console.error('Error loading staff:', error);
-      }
-    },
-    async loadHospitalStaffs() {
-      try {
-        const response = await api.staff.getHospitalStaffs({});
-        this.hospitalStaffs = response.data.data;
-      } catch (error) {
-        console.error('Error loading hospital staffs:', error);
-      }
-    },
-    async loadHospitals() {
-      try {
-        const response = await api.hospital.getAllHospitals();
-        this.hospitals = response.data.data;
-      } catch (error) {
-        console.error('Error loading hospitals:', error);
-      }
-    },
-    processStaffData() {
-      // Calculate overall statistics
-      this.stats.totalDoctors = this.allStaff.filter(staff => 
-        staff.position && staff.position.toLowerCase().includes('医生')
-      ).length;
-      
-      this.stats.totalNurses = this.allStaff.filter(staff => 
-        staff.position && staff.position.toLowerCase().includes('护士')
-      ).length;
-      
-      this.stats.totalStaff = this.allStaff.length;
-      
-      // Group hospital staffs by hospital
-      const grouped = {};
-      
-      this.hospitalStaffs.forEach(hs => {
-        const hospitalId = hs.hospital?.id || hs.hospital_id;
-        const hospitalName = this.getHospitalName(hospitalId);
-        
-        if (!grouped[hospitalId]) {
-          grouped[hospitalId] = {
-            hospitalId,
-            hospitalName,
-            doctorsCount: 0,
-            nursesCount: 0,
-            otherCount: 0,
-            total: 0
-          };
+        console.error('Failed to load staff data:', error);
+        if (error.response && error.response.status === 401) {
+          this.$router.push('/login');
         }
-        
-        // Get the staff member to determine their role
-        const staffMember = this.allStaff.find(s => 
-          s.id === hs.staff?.id || s.id === hs.staff_id
-        );
-        
-        if (staffMember) {
-          if (staffMember.position && staffMember.position.toLowerCase().includes('医生')) {
-            grouped[hospitalId].doctorsCount++;
-          } else if (staffMember.position && staffMember.position.toLowerCase().includes('护士')) {
-            grouped[hospitalId].nursesCount++;
-          } else {
-            grouped[hospitalId].otherCount++;
+      }
+    },
+    initPieChart() {
+      if (!this.$refs.hospitalPieChart) return;
+
+      // 如果图表已存在，先销毁
+      if (this.pieChart) {
+        this.pieChart.dispose();
+      }
+
+      // 初始化图表
+      this.pieChart = echarts.init(this.$refs.hospitalPieChart);
+
+      // 准备图表数据
+      const chartData = this.hospitalDistribution.map((hospital, index) => ({
+        name: hospital.hospital__name,
+        value: hospital.total,
+        itemStyle: {
+          color: this.chartColors[index % this.chartColors.length]
+        }
+      }));
+
+      // 配置选项
+      const option = {
+        tooltip: {
+          trigger: 'item',
+          formatter: '{b}: {c}人 ({d}%)'
+        },
+        series: [
+          {
+            type: 'pie',
+            radius: ['45%', '70%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+              borderRadius: 8,
+              borderColor: '#fff',
+              borderWidth: 2
+            },
+            label: {
+              show: true,
+              position: 'outside',
+              formatter: '{b}\n{d}%',
+              fontSize: 12
+            },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: 14,
+                fontWeight: 'bold'
+              },
+              itemStyle: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)'
+              }
+            },
+            data: chartData
           }
-          grouped[hospitalId].total++;
-        }
-      });
-      
-      this.hospitalStaffDistribution = Object.values(grouped);
+        ]
+      };
+
+      this.pieChart.setOption(option);
     },
-    getHospitalName(hospitalId) {
-      const hospital = this.hospitals.find(h => h.id === hospitalId);
-      return hospital ? hospital.name : '未知医院';
-    },
-    getHospitalNameForStaff(staffId) {
-      const hospitalStaff = this.hospitalStaffs.find(hs => 
-        hs.staff?.id === staffId || hs.staff_id === staffId
-      );
-      
-      if (hospitalStaff) {
-        return this.getHospitalName(hospitalStaff.hospital?.id || hospitalStaff.hospital_id);
+    handleResize() {
+      if (this.pieChart) {
+        this.pieChart.resize();
       }
-      return '未分配';
+    },
+    getPercentage(count) {
+      if (!this.stats.total_staff) return 0;
+      return ((count / this.stats.total_staff) * 100).toFixed(1);
+    },
+    getHospitalPercentage(count) {
+      if (!this.stats.total_staff) return 0;
+      return ((count / this.stats.total_staff) * 100).toFixed(1);
+    },
+    getBarClass(title) {
+      if (!title) return 'bg-gray';
+      if (title.includes('医')) return 'bg-blue';
+      if (title.includes('护')) return 'bg-green';
+      return 'bg-orange';
     }
   }
 };
@@ -207,99 +283,224 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  color: #333;
 }
 
+.header-section {
+  margin-bottom: 30px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+/* 概览卡片 */
 .stats-overview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 30px;
 }
 
 .stat-card {
-  background: #f8f9fa;
+  background: white;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   text-align: center;
-  border: 1px solid #dee2e6;
+  border-left: 5px solid #ccc;
 }
 
-.stat-card h3 {
-  margin: 0 0 10px 0;
-  color: #495057;
-}
+.doctor-card { border-left-color: #3498db; }
+.nurse-card { border-left-color: #2ecc71; }
+.other-card { border-left-color: #f39c12; }
+.total-card { border-left-color: #34495e; }
 
 .stat-value {
-  font-size: 2em;
+  font-size: 2.5rem;
   font-weight: bold;
-  color: #007bff;
-  margin: 0;
+  margin: 10px 0;
+  color: #2c3e50;
 }
 
-.staff-distribution h2 {
-  margin-bottom: 20px;
-  color: #343a40;
+.stat-label {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  text-transform: uppercase;
 }
 
-.hospital-staff-list {
+/* 内容网格 */
+.content-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 30px;
 }
 
-.hospital-staff-card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px;
+.panel {
   background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
-.hospital-staff-card h3 {
-  margin-top: 0;
-  color: #007bff;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
+.panel h2 {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: #2c3e50;
+  border-left: 4px solid #3498db;
+  padding-left: 10px;
 }
 
-.staff-breakdown {
+/* 职称结构列表 */
+.structure-item {
+  margin-bottom: 15px;
+}
+
+.structure-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.progress-bg {
+  background: #f0f0f0;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.bg-blue { background-color: #3498db; }
+.bg-green { background-color: #2ecc71; }
+.bg-orange { background-color: #f39c12; }
+.bg-gray { background-color: #bdc3c7; }
+
+/* 医院分布列表 */
+.hospital-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.hospital-item {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.hospital-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.hospital-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.total-badge {
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.hospital-stats {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.doctor-dot { background: #3498db; }
+.nurse-dot { background: #2ecc71; }
+
+/* 环形图部分 */
+.chart-section {
+  margin-bottom: 30px;
+}
+
+.chart-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: center;
+}
+
+.pie-chart {
+  width: 100%;
+  height: 400px;
+}
+
+.chart-legend {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
   gap: 10px;
 }
 
-.staff-type {
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-name {
+  flex: 1;
+  font-weight: 500;
+  color: #333;
+}
+
+.legend-value {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* 表格部分 */
+.panel-header {
   display: flex;
   justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px dashed #eee;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.staff-type.total {
-  font-weight: bold;
-  border-top: 1px solid #dee2e6;
-  border-bottom: none;
+.refresh-btn {
+  padding: 6px 12px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
 }
 
-.staff-type .type-label {
-  color: #495057;
+.refresh-btn:hover {
+  background: #2980b9;
 }
 
-.staff-type.total .type-label {
-  color: #007bff;
-}
-
-.staff-type .type-value {
-  font-weight: bold;
-}
-
-.staff-list-section h2 {
-  margin-top: 40px;
-  margin-bottom: 20px;
-  color: #343a40;
-}
-
-.staff-table {
+.table-container {
   overflow-x: auto;
 }
 
@@ -311,11 +512,31 @@ table {
 th, td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #eee;
 }
 
 th {
-  background-color: #f8f9fa;
-  font-weight: bold;
+  background: #f9fafb;
+  color: #666;
+  font-weight: 600;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .stats-overview { grid-template-columns: 1fr 1fr; }
+  .content-grid { grid-template-columns: 1fr; }
+  .chart-container {
+    grid-template-columns: 1fr;
+  }
+  .pie-chart {
+    height: 300px;
+  }
 }
 </style>

@@ -82,7 +82,10 @@ const departmentAPI = {
 const staffAPI = {
   getAllStaffs: () => api.get('/staffs/'),
   createStaff: (data) => api.post('/staffs/', data),
-  
+
+  // 新增：获取人员统计信息
+  getStatistics: () => api.get('/staffs/statistics/'),
+
   // Hospital staff relationships
   getHospitalStaffs: (params) => api.get('/hospital_staffs/', { params }),
   createHospitalStaff: (data) => api.post('/hospital_staffs/', data),
@@ -90,9 +93,10 @@ const staffAPI = {
 
 // Event API endpoints
 const eventAPI = {
-  getAllEvents: () => api.get('/events/'),
+  // 修改这里：接收 params 参数，用于筛选
+  getAllEvents: (params) => api.get('/events/', { params }),
   createEvent: (data) => api.post('/events/', data),
-  
+
   // Hospital events
   getHospitalEvents: (params) => api.get('/hospital_events/', { params }),
   createHospitalEvent: (data) => api.post('/hospital_events/', data),
@@ -131,6 +135,8 @@ const statisticsAPI = {
 };
 
 
+
+
 export default {
   public: publicAPI,
   hospital: hospitalAPI,
@@ -141,5 +147,5 @@ export default {
   score: scoreAPI,
   district: districtAPI,
   auth: authAPI,
-  statistics: statisticsAPI
+  statistics: statisticsAPI,
 };

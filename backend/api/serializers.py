@@ -61,11 +61,49 @@ class StaffSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class HospitalEventSerializer(serializers.ModelSerializer):
+    hospital_name = serializers.CharField(source='hospital.name', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = HospitalEvent
+        fields = ['id', 'hospital', 'hospital_name', 'role', 'role_display', 'response_time', 'affected_patient_count']
+
 # 5. 事件相关序列化器
 class EmergencyEventSerializer(serializers.ModelSerializer):
+    # 用于读取：嵌套显示参与的医院列表
+    participating_hospitals = HospitalEventSerializer(source='hospital_participations', many=True, read_only=True)
+
+    # 用于写入：接收前端传来的参与医院列表 [{'hospital_id': 1, 'role': 'primary'}, ...]
+    participants = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True,
+        required=False
+    )
+
     class Meta:
         model = EmergencyEvent
         fields = '__all__'
+
+    def create(self, validated_data):
+        # 提取 participants 数据
+        participants_data = validated_data.pop('participants', [])
+
+        # 创建事件本身
+        event = EmergencyEvent.objects.create(**validated_data)
+
+        # 创建关联的医院记录
+        for p_data in participants_data:
+            hospital_id = p_data.get('hospital_id')
+            role = p_data.get('role', 'reporting')  # 默认为报告医院
+            if hospital_id:
+                HospitalEvent.objects.create(
+                    event=event,
+                    hospital_id=hospital_id,
+                    role=role
+                )
+
+        return event
 
 
 # --- 关系表序列化器 (M:N) ---
@@ -96,3 +134,4 @@ class DepartmentStaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentStaff
         fields = '__all__'
+

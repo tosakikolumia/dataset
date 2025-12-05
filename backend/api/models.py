@@ -115,13 +115,30 @@ class HospitalServiceScore(models.Model):
 
 # 8. EmergencyEvent（突发事件）
 class EmergencyEvent(models.Model):
-    event_id = models.IntegerField(primary_key=True)
+    # ✅ 修改：定义与前端一致的 4 级风险选项
+    class Severity(models.TextChoices):
+        LEVEL_IV = '一般', '一般 (IV级)'
+        LEVEL_III = '较大', '较大 (III级)'
+        LEVEL_II = '重大', '重大 (II级)'
+        LEVEL_I = '特别重大', '特别重大 (I级)'
+
+    event_id = models.AutoField(primary_key=True)  # 建议改为 AutoField 自动增长，或者保持 IntegerField 但需前端生成
     event_type = models.CharField(max_length=200, null=True, blank=True)
-    severity = models.CharField(max_length=50, null=True, blank=True)
+
+    # ✅ 修改：应用 choices 限制，默认可为空
+    severity = models.CharField(
+        max_length=50,
+        choices=Severity.choices,
+        default=Severity.LEVEL_IV,
+        null=True,
+        blank=True
+    )
+
     report_time = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'EmergencyEvent'
+
 
 
 # ========================================================
@@ -164,9 +181,18 @@ class DepartmentStaff(models.Model):
 
 # 12. HospitalEvent（医院参与突发事件）
 class HospitalEvent(models.Model):
+    # 定义角色选项
+    class Role(models.TextChoices):
+        PRIMARY = 'primary', '主责医院'
+        SUPPORT = 'support', '支援医院'
+        REPORTING = 'reporting', '报告医院'
+        TRANSFER = 'transfer', '转诊医院'
+        SCREENING = 'screening', '排查医院'
+
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, db_column='hospital_id')
-    event = models.ForeignKey(EmergencyEvent, on_delete=models.CASCADE, db_column='event_id')
-    role = models.CharField(max_length=100, null=True, blank=True)
+    event = models.ForeignKey(EmergencyEvent, on_delete=models.CASCADE, db_column='event_id', related_name='hospital_participations')
+    # 修改 role 字段使用 choices
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.REPORTING)
     response_time = models.DateTimeField(null=True, blank=True)
     affected_patient_count = models.IntegerField(null=True, blank=True)
 
