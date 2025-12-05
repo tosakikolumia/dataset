@@ -123,6 +123,14 @@ const districtAPI = {
   getAllDistricts: () => api.get('/districts/'),
 };
 
+// ... 前面代码不变
+
+const statisticsAPI = {
+  getDashboard: () => api.get('/statistics/dashboard/'),
+  getHospitalRank: (params) => api.get('/statistics/hospital_rank/', { params }),
+};
+
+
 export default {
   public: publicAPI,
   hospital: hospitalAPI,
@@ -132,5 +140,6 @@ export default {
   hospitalLevel: hospitalLevelAPI,
   score: scoreAPI,
   district: districtAPI,
-  auth: authAPI
+  auth: authAPI,
+  statistics: statisticsAPI
 };

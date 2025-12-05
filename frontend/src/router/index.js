@@ -110,6 +110,12 @@ const routes = [
     name: 'department-index',
     component: () => import('../views/public/DepartmentIndexView.vue')
   },
+  {
+  path: '/municipal-admin/resources',
+  name: 'municipal-resources',
+  component: () => import('../views/municipal_admin/ResourceOverviewView.vue'),
+  meta: { requiresAuth: true, role: 'municipal_admin' } // 市政专用
+  },
 ]
 
 const router = createRouter({

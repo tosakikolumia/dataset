@@ -9,7 +9,7 @@ from api.views.staff import StaffViewSet, HospitalStaffViewSet
 from api.views.event import EmergencyEventViewSet, HospitalEventViewSet
 from api.views.public import PublicViewSet
 from api.views.hospital import DistrictViewSet
-
+from api.views.statistics import StatisticsViewSet
 router = DefaultRouter()
 
 # 🏥 医院模块
@@ -35,6 +35,8 @@ router.register(r'hospital_events', HospitalEventViewSet)
 router.register(r'public', PublicViewSet, basename='public')
 
 router.register(r'districts', DistrictViewSet)
+# 📊 统计模块
+router.register(r'statistics', StatisticsViewSet, basename='statistics')
 urlpatterns = [
     path('', include(router.urls)),
 ]

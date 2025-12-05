@@ -1,63 +1,88 @@
 <template>
   <div class="resource-overview">
-    <h1>全市医院资源总览</h1>
-    <p>市政管理员查看全市医院资源数据大屏</p>
-    
-    <div class="overview-stats">
-      <div class="stat-card">
-        <h3>总医院数</h3>
-        <p class="stat-value">{{ stats.totalHospitals }}</p>
+    <h1>📊 全市医疗资源总览</h1>
+
+    <div class="overview-cards">
+      <div class="card blue">
+        <div class="label">🏥 总医院数</div>
+        <div class="value">{{ dashboard.total_hospitals }}</div>
       </div>
-      
-      <div class="stat-card">
-        <h3>总床位数</h3>
-        <p class="stat-value">{{ stats.totalBeds }}</p>
+      <div class="card green">
+        <div class="label">🛏️ 全市床位总数</div>
+        <div class="value">{{ dashboard.total_beds }}</div>
+        <div class="sub">ICU床位: {{ dashboard.icu_beds }}</div>
       </div>
-      
-      <div class="stat-card">
-        <h3>总ICU床位</h3>
-        <p class="stat-value">{{ stats.totalICUBeds }}</p>
+      <div class="card orange">
+        <div class="label">🩺 设备总数</div>
+        <div class="value">{{ dashboard.total_devices }}</div>
       </div>
-      
-      <div class="stat-card">
-        <h3>总设备数</h3>
-        <p class="stat-value">{{ stats.totalEquipment }}</p>
+      <div class="card purple">
+        <div class="label">🚪 诊室总数</div>
+        <div class="value">{{ dashboard.total_rooms }}</div>
       </div>
     </div>
-    
-    <div class="resources-section">
-      <h2>各医院资源对比</h2>
-      <div class="hospital-resources-list">
-        <div 
-          v-for="hospitalResource in hospitalResources" 
-          :key="hospitalResource.id" 
-          class="hospital-resource-card"
-        >
-          <h3>{{ hospitalResource.hospital?.name || hospitalResource.hospital_name }}</h3>
-          <div class="resource-details">
-            <div class="resource-item">
-              <span>总床位:</span>
-              <span>{{ hospitalResource.bed_count || 0 }}</span>
-            </div>
-            <div class="resource-item">
-              <span>可用床位:</span>
-              <span>{{ hospitalResource.available_bed_count || 0 }}</span>
-            </div>
-            <div class="resource-item">
-              <span>ICU床位:</span>
-              <span>{{ hospitalResource.icu_bed_count || 0 }}</span>
-            </div>
-            <div class="resource-item">
-              <span>可用ICU床位:</span>
-              <span>{{ hospitalResource.available_icu_bed_count || 0 }}</span>
-            </div>
-            <div class="resource-item full-width">
-              <span>设备信息:</span>
-              <span>{{ hospitalResource.equipment_info || '暂无信息' }}</span>
-            </div>
-          </div>
-        </div>
+
+    <div class="filter-bar">
+      <div class="filter-item">
+        <label>行政区：</label>
+        <select v-model="filters.district" @change="loadRankData">
+          <option value="">全部</option>
+          <option v-for="d in districts" :key="d.district_id" :value="d.district_id">
+            {{ d.district_name }}
+          </option>
+        </select>
       </div>
+      <div class="filter-item">
+        <label>医院等级：</label>
+        <select v-model="filters.level" @change="loadRankData">
+          <option value="">全部</option>
+          <option v-for="l in levels" :key="l.level_id" :value="l.level_id">
+            {{ l.level_name }}
+          </option>
+        </select>
+      </div>
+      <button class="reset-btn" @click="resetFilters">重置筛选</button>
+    </div>
+
+    <div class="table-section">
+      <h3>🏥 资源分布明细</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>医院名称</th>
+            <th>行政区</th>
+            <th>等级</th>
+            <th>总床位</th>
+            <th>ICU/设备/诊室</th>
+            <th>资源紧张度</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in rankData" :key="item.hospital_id">
+            <td>{{ item.name }}</td>
+            <td>{{ item.district }}</td>
+            <td>
+              <span class="tag level-tag">{{ item.level }}</span>
+            </td>
+            <td class="font-bold">{{ item.bed_total }}</td>
+            <td class="resource-detail">
+              <span>设备: {{ item.device_count }}</span>
+              <span>诊室: {{ item.room_count }}</span>
+            </td>
+            <td>
+              <span :class="['status-badge', item.stress]">
+                {{ getStressLabel(item.stress) }}
+              </span>
+            </td>
+            <td>
+              <button class="view-btn" @click="$router.push(`/hospital/${item.hospital_id}`)">
+                查看详情
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
@@ -69,98 +94,65 @@ export default {
   name: 'ResourceOverviewView',
   data() {
     return {
-      hospitals: [],
-      departmentResources: [],
-      stats: {
-        totalHospitals: 0,
-        totalBeds: 0,
-        totalICUBeds: 0,
-        totalEquipment: 0
+      dashboard: {
+        total_hospitals: 0,
+        total_beds: 0,
+        icu_beds: 0,
+        total_devices: 0,
+        total_rooms: 0
       },
-      hospitalResources: []
+      rankData: [],
+      districts: [],
+      levels: [],
+      filters: {
+        district: '',
+        level: ''
+      }
     };
   },
   async created() {
-    await this.loadData();
+    await this.loadDashboard();
+    await this.loadOptions();
+    await this.loadRankData();
   },
   methods: {
-    async loadData() {
-      await Promise.all([
-        this.loadHospitals(),
-        this.loadDepartmentResources()
-      ]);
-      this.calculateStats();
-      this.processHospitalResources();
-    },
-    async loadHospitals() {
+    async loadDashboard() {
       try {
-        const response = await api.hospital.getAllHospitals();
-        this.hospitals = response.data.data;
-      } catch (error) {
-        console.error('Error loading hospitals:', error);
+        const res = await api.statistics.getDashboard();
+        this.dashboard = res.data.data;
+      } catch (err) {
+        console.error("加载总览失败", err);
       }
     },
-    async loadDepartmentResources() {
+    async loadOptions() {
+      // 加载筛选下拉框的选项
+      const dRes = await api.district.getAllDistricts();
+      this.districts = dRes.data.data || dRes.data;
+
+      const lRes = await api.hospitalLevel.getAllLevels();
+      this.levels = lRes.data.data || lRes.data;
+    },
+    async loadRankData() {
       try {
-        // Get all department resources
-        const response = await api.department.getDepartmentResources({});
-        this.departmentResources = response.data.data;
-      } catch (error) {
-        console.error('Error loading department resources:', error);
+        const res = await api.statistics.getHospitalRank(this.filters);
+        this.rankData = res.data.data;
+        console.log(this.rankData);
+      } catch (err) {
+        console.error("加载列表失败", err);
       }
     },
-    calculateStats() {
-      // Calculate total hospitals
-      this.stats.totalHospitals = this.hospitals.length;
-      
-      // Calculate total beds and ICU beds from department resources
-      this.stats.totalBeds = this.departmentResources.reduce((sum, res) => {
-        return sum + (res.bed_count || 0);
-      }, 0);
-      
-      this.stats.totalICUBeds = this.departmentResources.reduce((sum, res) => {
-        return sum + (res.icu_bed_count || 0);
-      }, 0);
-      
-      // For equipment, we'll count the resources that have equipment info
-      this.stats.totalEquipment = this.departmentResources.filter(res => res.equipment_info).length;
+    resetFilters() {
+      this.filters.district = '';
+      this.filters.level = '';
+      this.loadRankData();
     },
-    processHospitalResources() {
-      // Group department resources by hospital
-      const grouped = {};
-      
-      this.departmentResources.forEach(resource => {
-        const hospitalId = resource.hospital?.id || resource.hospital_id;
-        if (!grouped[hospitalId]) {
-          grouped[hospitalId] = {
-            id: hospitalId,
-            hospital: resource.hospital,
-            hospital_name: resource.hospital?.name || resource.hospital_name,
-            bed_count: 0,
-            available_bed_count: 0,
-            icu_bed_count: 0,
-            available_icu_bed_count: 0,
-            equipment_info: []
-          };
-        }
-        
-        // Add up the resources
-        grouped[hospitalId].bed_count += resource.bed_count || 0;
-        grouped[hospitalId].available_bed_count += resource.available_bed_count || 0;
-        grouped[hospitalId].icu_bed_count += resource.icu_bed_count || 0;
-        grouped[hospitalId].available_icu_bed_count += resource.available_icu_bed_count || 0;
-        
-        if (resource.equipment_info) {
-          grouped[hospitalId].equipment_info.push(resource.equipment_info);
-        }
-      });
-      
-      this.hospitalResources = Object.values(grouped);
-    },
-    formatDate(dateString) {
-      if (!dateString) return '未设置';
-      const date = new Date(dateString);
-      return date.toLocaleDateString('zh-CN');
+    getStressLabel(status) {
+      const map = {
+        high: '🔴 紧张',
+        medium: '🟠 适中',
+        normal: '🟢 充足'
+      };
+      return map[status] || status;
     }
   }
 };
@@ -173,77 +165,59 @@ export default {
   padding: 20px;
 }
 
-.overview-stats {
+/* 卡片样式 */
+.overview-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   margin-bottom: 30px;
 }
-
-.stat-card {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid #dee2e6;
-}
-
-.stat-card h3 {
-  margin: 0 0 10px 0;
-  color: #495057;
-}
-
-.stat-value {
-  font-size: 2em;
-  font-weight: bold;
-  color: #007bff;
-  margin: 0;
-}
-
-.resources-section h2 {
-  margin-bottom: 20px;
-  color: #343a40;
-}
-
-.hospital-resources-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
-}
-
-.hospital-resource-card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px;
+.card {
   background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
 }
+.card .label { font-size: 14px; color: #666; margin-bottom: 10px; }
+.card .value { font-size: 28px; font-weight: bold; color: #333; }
+.card .sub { font-size: 12px; color: #888; margin-top: 5px; }
 
-.hospital-resource-card h3 {
-  margin-top: 0;
-  color: #007bff;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 10px;
-}
+.blue { border-top: 4px solid #007bff; }
+.green { border-top: 4px solid #28a745; }
+.orange { border-top: 4px solid #fd7e14; }
+.purple { border-top: 4px solid #6f42c1; }
 
-.resource-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.resource-item {
+/* 筛选区 */
+.filter-bar {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
   display: flex;
-  justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px dashed #eee;
+  gap: 20px;
+  align-items: center;
 }
+.filter-item label { margin-right: 10px; font-weight: bold; }
+.filter-item select { padding: 5px 10px; border: 1px solid #ddd; border-radius: 4px; }
+.reset-btn { padding: 5px 15px; background: #f8f9fa; border: 1px solid #ddd; cursor: pointer; }
 
-.resource-item.full-width {
-  grid-column: 1 / -1;
-}
+/* 表格区 */
+.table-section { background: white; padding: 20px; border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+th { background: #f8f9fa; text-align: left; padding: 12px; border-bottom: 2px solid #eee; }
+td { padding: 12px; border-bottom: 1px solid #eee; color: #555; }
 
-.resource-item span:first-child {
-  font-weight: bold;
-  color: #495057;
-}
+.tag { padding: 2px 8px; border-radius: 12px; font-size: 12px; background: #e9ecef; color: #495057; }
+.resource-detail { font-size: 13px; color: #666; display: flex; flex-direction: column; gap: 4px; }
+.font-bold { font-weight: bold; color: #333; }
+
+/* 状态徽章 */
+.status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+.status-badge.high { background: #ffebee; color: #c62828; }
+.status-badge.medium { background: #fff3e0; color: #ef6c00; }
+.status-badge.normal { background: #e8f5e9; color: #2e7d32; }
+
+.view-btn { background: none; border: 1px solid #007bff; color: #007bff; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+.view-btn:hover { background: #007bff; color: white; }
 </style>

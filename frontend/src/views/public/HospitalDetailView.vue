@@ -31,6 +31,8 @@
 
           <div><strong>床位数:</strong> {{ hospital.bed_total || '未设置' }}</div>
 
+          <div><strong>日门诊量:</strong> {{ hospital.outpatient_capacity ? hospital.outpatient_capacity + ' 人次' : '未设置' }}</div>
+
           <div><strong>员工数:</strong> {{ hospital.staff_count || 0 }} 人</div>
         </div>
       </div>

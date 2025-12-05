@@ -37,6 +37,7 @@ export const useHospitalStore = defineStore('hospital', {
         // ✅ 改用封装好的方法
         const response = await api.hospital.getHospitalById(id);
         this.currentHospital = response.data.data || response.data;
+        console.log(this.currentHospital);
         return response.data;
       } catch (error) {
         console.error('Error fetching hospital:', error);
