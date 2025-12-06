@@ -116,6 +116,12 @@ const routes = [
   component: () => import('../views/municipal_admin/ResourceOverviewView.vue'),
   meta: { requiresAuth: true, role: 'municipal_admin' } // 市政专用
   },
+  {
+  path: '/staff/:id',
+  name: 'StaffDetail',
+  component: () => import('.././components/common/StaffDetailView.vue'),
+  meta: { requiresAuth: true }
+  },
 ]
 
 const router = createRouter({

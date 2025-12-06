@@ -1,39 +1,62 @@
-# api/views/department.py
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
 from api.models import Department, DepartmentResource, DepartmentStaff
-from api.serializers import *
-from api.permission import IsCityAdmin, IsHospitalAdmin, IsCityOrHospitalAdmin,ReadOnly
+from api.serializers import DepartmentSerializer, DepartmentResourceSerializer, DepartmentStaffSerializer
+from api.permission import IsCityAdmin, IsHospitalAdmin, ReadOnly
 
-# 标准科室库 (市政管理，居民只读)
+
+# =========================================================
+# 1. 标准科室库 (市政管理，居民只读) - [恢复原代码]
+# =========================================================
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
     permission_classes = [IsCityAdmin | ReadOnly]
 
-# 🏥 4.9 科室资源 (床位/设备)
+
+# =========================================================
+# 2. 科室资源 (床位/设备) - [使用更新后的逻辑]
+# =========================================================
 class DepartmentResourceViewSet(viewsets.ModelViewSet):
+    """
+    科室资源管理接口
+    - List: 医院管理员只能看到自己医院的资源。
+    - Update: 允许修改床位、设备数等。
+    """
     serializer_class = DepartmentResourceSerializer
+    # 权限控制：市级管理员、医院管理员可写，其他人只读
     permission_classes = [IsCityAdmin | IsHospitalAdmin | ReadOnly]
+    # 默认查询集
     queryset = DepartmentResource.objects.all()
+
     def get_queryset(self):
-        # 医院管理员只能看到自己医院的资源
-        user = self.request.user  # 获取当前请求用户
-        if user.is_authenticated and hasattr(user, 'profile') and user.profile.role == 'hospital_admin':  # 检查用户是否已认证且角色为医院管理员
-            return DepartmentResource.objects.filter(hospital=user.profile.hospital)  # 返回用户所在医院的部门资源
-        return DepartmentResource.objects.all()  # 返回所有部门资源
+        user = self.request.user
+        # 如果是匿名用户，返回空或只读(取决于全局配置，这里设为安全起见返回空)
+        if not user.is_authenticated:
+            return DepartmentResource.objects.none()
+
+        # 医院管理员逻辑：只返回关联医院的资源
+        if hasattr(user, 'profile') and user.profile.role == 'hospital_admin':
+            if user.profile.hospital:
+                return DepartmentResource.objects.filter(hospital=user.profile.hospital)
+            return DepartmentResource.objects.none()
+
+        # 市政管理员或超级用户可以看到所有
+        return DepartmentResource.objects.all()
 
     def perform_create(self, serializer):
-        # 强制绑定当前医院
+        # 创建时的逻辑
         user = self.request.user
-        if user.profile.role == 'hospital_admin':
+        if hasattr(user, 'profile') and user.profile.role == 'hospital_admin':
+            # 强制绑定到当前管理员的医院
             serializer.save(hospital=user.profile.hospital)
         else:
             serializer.save()
 
-# 🏥 4.10 (部分) 员工在科室的任职
+
+# =========================================================
+# 3. 员工在科室的任职 - [恢复原代码]
+# =========================================================
 class DepartmentStaffViewSet(viewsets.ModelViewSet):
     queryset = DepartmentStaff.objects.all()
     serializer_class = DepartmentStaffSerializer
-    permission_classes = [IsCityAdmin | IsHospitalAdmin] 
-    # 注意：这个表没有 hospital_id，逻辑上需要前端传正确的 dept_id
-    # 在 0基础阶段，先不写复杂的跨表校验
+    permission_classes = [IsCityAdmin | IsHospitalAdmin]

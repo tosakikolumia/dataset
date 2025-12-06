@@ -121,7 +121,8 @@ class HospitalDepartmentSerializer(serializers.ModelSerializer):
 class HospitalStaffSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='staff.name', read_only=True)
     hospital_name = serializers.CharField(source='hospital.name', read_only=True)
-
+    staff_gender = serializers.CharField(source='staff.gender', read_only=True)
+    staff_title = serializers.CharField(source='staff.title', read_only=True)
     class Meta:
         model = HospitalStaff
         fields = '__all__'
@@ -135,3 +136,75 @@ class DepartmentStaffSerializer(serializers.ModelSerializer):
         model = DepartmentStaff
         fields = '__all__'
 
+
+class HospitalStaffReadSerializer(serializers.ModelSerializer):
+    """
+    用于读取：嵌套显示完整的 Staff 信息
+    """
+    staff = StaffSerializer(read_only=True)  # 嵌套完整的 Staff 对象
+    hospital_name = serializers.CharField(source='hospital.name', read_only=True)
+
+    class Meta:
+        model = HospitalStaff
+        fields = '__all__'
+
+
+class HospitalStaffCreateCompositeSerializer(serializers.Serializer):
+    """
+    用于写入：同时接收 Staff 基本信息和 HospitalStaff 关联信息
+    """
+    # Staff 的字段
+    name = serializers.CharField(max_length=200)
+    gender = serializers.CharField(max_length=10, required=False)
+    title = serializers.CharField(max_length=100, required=False)
+    phone = serializers.CharField(max_length=50, required=False)
+    hire_date = serializers.DateField(required=False)
+    # HospitalStaff 的字段
+    employment_type = serializers.CharField(max_length=50, required=False)  # 例如：全职、兼职
+
+    # 额外补充 Staff 的 ID 字段，如果是录用已有员工
+    existing_staff_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+# --- 辅助序列化器 ---
+class DepartmentInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ['dept_id', 'dept_name']
+
+
+class DepartmentStaffDetailSerializer(serializers.ModelSerializer):
+    dept = DepartmentInfoSerializer(read_only=True)
+
+    class Meta:
+        model = DepartmentStaff
+        fields = ['dept', 'role_in_dept']
+
+
+class HospitalInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hospital
+        fields = ['hospital_id', 'name']
+
+
+class HospitalStaffDetailSerializer(serializers.ModelSerializer):
+    hospital = HospitalInfoSerializer(read_only=True)
+
+    class Meta:
+        model = HospitalStaff
+        fields = ['hospital', 'employment_type']
+
+
+# --- 主序列化器：员工全息档案 ---
+class StaffDetailSerializer(serializers.ModelSerializer):
+    # 反向查询：获取该员工所有的科室任职信息
+    # 注意：需要在 models.py 的 ForeignKey 中加上 related_name='dept_assignments'
+    # 或者使用默认的 departmentstaff_set
+    dept_assignments = DepartmentStaffDetailSerializer(source='departmentstaff_set', many=True, read_only=True)
+
+    # 反向查询：获取该员工所有的医院执业信息
+    hospital_employments = HospitalStaffDetailSerializer(source='hospitalstaff_set', many=True, read_only=True)
+
+    class Meta:
+        model = Staff
+        fields = '__all__'  # 包含 name, gender, title, phone, dept_assignments, hospital_employments

@@ -23,6 +23,12 @@ class IsHospitalAdmin(permissions.BasePermission):
             return obj == user_hospital
         if hasattr(obj, 'hospital'):
             return obj.hospital == user_hospital
+        # 3. ✅【新增】特殊处理 Staff (医护人员)
+        # Staff 与 Hospital 是多对多关系，通过 HospitalStaff 关联
+        #检查该 Staff 是否在当前管理员的医院有任职记录
+        if obj.__class__.__name__ == 'Staff':
+            # 使用反向查询 hospitalstaff_set 检查是否存在关联
+            return obj.hospitalstaff_set.filter(hospital=user_hospital).exists()
         return False
 
 class IsCityOrHospitalAdmin(permissions.BasePermission):
@@ -32,6 +38,7 @@ class IsCityOrHospitalAdmin(permissions.BasePermission):
             return False
         role = request.user.profile.role
         return role in ['city_admin', 'hospital_admin']
+
 
 class ReadOnly(permissions.BasePermission):
     """
